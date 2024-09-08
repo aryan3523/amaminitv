@@ -10,13 +10,35 @@ from threading import Thread
 import uvicorn
 
 # Initialize the bot with the token from environment variable
-bot = telebot.TeleBot(os.getenv("TELEGRAM_TOKEN"))
+bot = telebot.TeleBot('6573180797:AAF4eDt3XdDsV0RBxm4ewt2btNe0bW_tTag')
 
 # Set up logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Function to get MPD links using httpx (same as before)
+# Define headers globally
+headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+    'Connection': 'keep-alive',
+    'Upgrade-Insecure-Requests': '1'
+}
+
+
+def get_title_from_url(url):
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, 'html.parser')
+        title = soup.find('title').text.strip()  # Fix variable name here
+        return title
+    except Exception as e:
+        print(f"Error fetching title for {url}: {e}")
+        return "Could not fetch title"
+
+# Function to get MPD links using httpx
 def get_mpd_link(url):
     try:
         response = httpx.get(url, headers=headers)
@@ -44,11 +66,12 @@ def send_welcome(message):
 @bot.message_handler(func=lambda message: True)
 def handle_message(message):
     url = message.text  # Get the URL from the user's message
+    title_name = get_title_from_url(url)
     mpd_links = get_mpd_link(url)  # Pass the URL to the get_mpd_link function
 
     if mpd_links.startswith("MPD links found:"):
         mpd_links_list = mpd_links.split("MPD links found:")[1].strip().strip('[]').replace("'", "").split(",")
-        response_message = "Found the following .mpd links:\n" + "\n".join([link.strip() for link in mpd_links_list])
+        response_message = f"Title: {title_name}\n\nFound the following .mpd links:\n" + "\n".join([link.strip() for link in mpd_links_list])
     else:
         response_message = mpd_links  # If there was an error or no links found, use the message from get_mpd_link
 
