@@ -88,7 +88,7 @@ def start_bot():
 # Create a FastAPI app
 app = FastAPI()
 
-@app.get("/")
+@app.get("/", methods=["GET", "HEAD"])
 def read_root():
     return {"message": "Telegram bot is running!"}
 
