@@ -8,9 +8,10 @@ import telebot
 from fastapi import FastAPI
 from threading import Thread
 import uvicorn
+from mcc import get_title_from_url, get_m3u8_link
 
 # Initialize the bot with the token from environment variable
-bot = telebot.TeleBot('6573180797:AAF4eDt3XdDsV0RBxm4ewt2btNe0bW_tTag')
+bot = telebot.TeleBot('7527363398:AAFWaUZ913Nbdequ4OQ6oJRwJMH9FyTJs5U')
 
 # Set up logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -26,13 +27,13 @@ headers = {
     'Upgrade-Insecure-Requests': '1'
 }
 
-
+# Function to get title from URL
 def get_title_from_url(url):
     try:
         response = requests.get(url)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, 'html.parser')
-        title = soup.find('title').text.strip()  # Fix variable name here
+        title = soup.find('title').text.strip()
         return title
     except Exception as e:
         print(f"Error fetching title for {url}: {e}")
@@ -47,13 +48,11 @@ def get_mpd_link(url):
         page_content = response.text
         mpd_pattern = r'(https?://[^\s]+\.mpd)'
         mpd_links = re.findall(mpd_pattern, page_content)
-
         if mpd_links:
             mpd_links = list(set(mpd_links))  # Remove duplicates
             return f"MPD links found: {mpd_links}"
         else:
             return "No .mpd link found on the page."
-
     except Exception as e:
         return f"Error occurred: {str(e)}"
 
@@ -63,19 +62,25 @@ def send_welcome(message):
     bot.reply_to(message, "Hello! Send me a URL and I will find .mpd links for you.")
 
 # Message handler for processing URLs and returning MPD links
+
 @bot.message_handler(func=lambda message: True)
 def handle_message(message):
-    url = message.text  # Get the URL from the user's message
+    url = message.text
     title_name = get_title_from_url(url)
-    mpd_links = get_mpd_link(url)  # Pass the URL to the get_mpd_link function
-
+    mpd_links = get_mpd_link(url)
+    m3u8_link = get_m3u8_link(url)
+    
     if mpd_links.startswith("MPD links found:"):
         mpd_links_list = mpd_links.split("MPD links found:")[1].strip().strip('[]').replace("'", "").split(",")
         response_message = f"Title: {title_name}\n\nFound the following .mpd links:\n" + "\n".join([link.strip() for link in mpd_links_list])
     else:
-        response_message = mpd_links  # If there was an error or no links found, use the message from get_mpd_link
-
+        response_message = mpd_links
+    
+    if m3u8_link:
+        response_message += f"\n\nFound .m3u8 link: {m3u8_link}"
+    
     bot.reply_to(message, response_message)
+
 
 # Function to start the bot
 def start_bot():
@@ -89,12 +94,12 @@ def start_bot():
 app = FastAPI()
 
 @app.get("/")
-async def read_root():
-    return {"message": "Hello! This is your bot service."}
+def read_root():
+    return {"message": "Telegram bot is running!"}
+
 if __name__ == "__main__":
     # Run the bot in a separate thread
     Thread(target=start_bot).start()
-
     # Start FastAPI web server on the dynamically assigned port
     port = int(os.environ.get("PORT", 5000))
     uvicorn.run(app, host="0.0.0.0", port=port)
