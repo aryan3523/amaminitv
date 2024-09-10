@@ -77,7 +77,7 @@ def handle_message(message):
         response_message = mpd_links
     
     if m3u8_link:
-        response_message += f"\n\nFound .m3u8 link: {m3u8_link}"
+        response_message = f"\n Found .m3u8 link: {m3u8_link}"
     
     bot.reply_to(message, response_message)
 
